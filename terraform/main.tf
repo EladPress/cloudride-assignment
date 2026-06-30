@@ -16,7 +16,6 @@ resource "aws_security_group" "alb" {
   }
 }
 
-# Tasks: only accept traffic from the ALB
 resource "aws_security_group" "service" {
   name   = "hello-service"
   vpc_id = aws_vpc.lab.id
@@ -36,8 +35,63 @@ resource "aws_security_group" "service" {
 }
 
 
+# --- Load balancer ---
+
+resource "aws_lb" "this" {
+  name               = "hello-alb"
+  load_balancer_type = "application"
+  security_groups    = [aws_security_group.alb.id]
+  subnets            = [aws_subnet.public.id, aws_subnet.public_b.id]
+}
+
+resource "aws_lb_target_group" "this" {
+  name        = "hello-tg"
+  port        = 80
+  protocol    = "HTTP"
+  vpc_id      = aws_vpc.lab.id
+  target_type = "ip" # required for Fargate
+
+  health_check {
+    path    = "/"
+    matcher = "200"
+  }
+}
+
+resource "aws_lb_listener" "http" {
+  load_balancer_arn = aws_lb.this.arn
+  port              = 80
+  protocol          = "HTTP"
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.this.arn
+  }
+}
+
+# --- ECS ---
+
 resource "aws_ecs_cluster" "this" {
   name = "hello-cluster"
+}
+
+# Task role required for ECS Exec to open SSM channels into the task
+resource "aws_iam_role" "task" {
+  name = "hello-task"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Action    = "sts:AssumeRole"
+      Principal = { Service = "ecs-tasks.amazonaws.com" }
+    }]
+  })
+}
+
+# AWS-managed policy that includes the ssmmessages:* actions ECS Exec needs
+resource "aws_iam_role_policy_attachment" "task_ssm" {
+  role       = aws_iam_role.task.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
 }
 
 resource "aws_ecs_task_definition" "this" {
@@ -46,6 +100,7 @@ resource "aws_ecs_task_definition" "this" {
   network_mode             = "awsvpc"
   cpu                      = 256
   memory                   = 512
+  task_role_arn            = aws_iam_role.task.arn
 
   container_definitions = jsonencode([
     {
@@ -60,16 +115,28 @@ resource "aws_ecs_task_definition" "this" {
 }
 
 resource "aws_ecs_service" "this" {
-  name            = "hello-service"
-  cluster         = aws_ecs_cluster.this.id
-  task_definition = aws_ecs_task_definition.this.arn
-  desired_count   = 2
-  launch_type     = "FARGATE"
+  name                   = "hello-service"
+  cluster                = aws_ecs_cluster.this.id
+  task_definition        = aws_ecs_task_definition.this.arn
+  desired_count          = 2
+  launch_type            = "FARGATE"
+  enable_execute_command = true
 
   network_configuration {
-    subnets          = [aws_subnet.public.id]
+    subnets          = [aws_subnet.public.id, aws_subnet.public_b.id]
     security_groups  = [aws_security_group.service.id]
     assign_public_ip = true # needed to pull the image (no NAT yet)
   }
 
+  load_balancer {
+    target_group_arn = aws_lb_target_group.this.arn
+    container_name   = "hello"
+    container_port   = 80
+  }
+
+  depends_on = [aws_lb_listener.http]
+}
+
+output "alb_url" {
+  value = "http://${aws_lb.this.dns_name}"
 }

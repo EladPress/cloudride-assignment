@@ -1,5 +1,5 @@
 variable "container_image" {
-  type = string
+  type    = string
   default = "eladpress/cloudride-assignment:main-1"
 }
 

@@ -2,6 +2,7 @@
 .aws
 *.pdf
 TODO
+CLAUDE.md
 
 # Terraform
 **/.terraform/*
