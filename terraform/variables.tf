@@ -20,3 +20,9 @@ variable "public_subnet_cidr" {
   type        = string
   default     = "10.0.1.0/24"
 }
+
+variable "alert_email" {
+  description = "Email subscribed to the CloudWatch alarm SNS topic. Empty disables the subscription."
+  type        = string
+  default     = ""
+}
