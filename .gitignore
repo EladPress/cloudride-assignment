@@ -3,6 +3,7 @@
 *.pdf
 TODO
 CLAUDE.md
+.DS_Store
 
 # Terraform
 **/.terraform/*
