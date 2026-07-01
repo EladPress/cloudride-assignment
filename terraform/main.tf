@@ -123,9 +123,9 @@ resource "aws_ecs_service" "this" {
   enable_execute_command = true
 
   network_configuration {
-    subnets          = [aws_subnet.public.id, aws_subnet.public_b.id]
+    subnets          = [aws_subnet.private.id, aws_subnet.private_b.id]
     security_groups  = [aws_security_group.service.id]
-    assign_public_ip = true # needed to pull the image (no NAT yet)
+    assign_public_ip = false
   }
 
   load_balancer {

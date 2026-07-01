@@ -24,6 +24,8 @@ data "aws_availability_zones" "available" {
   state = "available"
 }
 
+# --- Public subnets ---
+
 resource "aws_subnet" "public" {
   vpc_id                  = aws_vpc.lab.id
   cidr_block              = var.public_subnet_cidr
@@ -32,6 +34,19 @@ resource "aws_subnet" "public" {
 
   tags = {
     Name        = "elad-lab-public"
+    Environment = var.environment
+    ManagedBy   = "Terraform"
+  }
+}
+
+resource "aws_subnet" "public_b" {
+  vpc_id                  = aws_vpc.lab.id
+  cidr_block              = "10.0.2.0/24"
+  availability_zone       = data.aws_availability_zones.available.names[1]
+  map_public_ip_on_launch = true
+
+  tags = {
+    Name        = "elad-lab-public-b"
     Environment = var.environment
     ManagedBy   = "Terraform"
   }
@@ -57,21 +72,82 @@ resource "aws_route_table_association" "public" {
   route_table_id = aws_route_table.public.id
 }
 
-# Second public subnet in a different AZ (an ALB requires at least two AZs)
-resource "aws_subnet" "public_b" {
-  vpc_id                  = aws_vpc.lab.id
-  cidr_block              = "10.0.2.0/24"
-  availability_zone       = data.aws_availability_zones.available.names[1]
-  map_public_ip_on_launch = true
+resource "aws_route_table_association" "public_b" {
+  subnet_id      = aws_subnet.public_b.id
+  route_table_id = aws_route_table.public.id
+}
+
+# --- Private subnets ---
+
+resource "aws_subnet" "private" {
+  vpc_id            = aws_vpc.lab.id
+  cidr_block        = "10.0.3.0/24"
+  availability_zone = data.aws_availability_zones.available.names[0]
 
   tags = {
-    Name        = "elad-lab-public-b"
+    Name        = "elad-lab-private"
     Environment = var.environment
     ManagedBy   = "Terraform"
   }
 }
 
-resource "aws_route_table_association" "public_b" {
-  subnet_id      = aws_subnet.public_b.id
-  route_table_id = aws_route_table.public.id
+resource "aws_subnet" "private_b" {
+  vpc_id            = aws_vpc.lab.id
+  cidr_block        = "10.0.4.0/24"
+  availability_zone = data.aws_availability_zones.available.names[1]
+
+  tags = {
+    Name        = "elad-lab-private-b"
+    Environment = var.environment
+    ManagedBy   = "Terraform"
+  }
+}
+
+# NAT Gateway gives the private subnets outbound-only internet access
+# (e.g. pulling the container image). It lives in a public subnet.
+resource "aws_eip" "nat" {
+  domain = "vpc"
+
+  tags = {
+    Name        = "elad-lab-nat"
+    Environment = var.environment
+    ManagedBy   = "Terraform"
+  }
+}
+
+resource "aws_nat_gateway" "this" {
+  allocation_id = aws_eip.nat.id
+  subnet_id     = aws_subnet.public.id
+  depends_on    = [aws_internet_gateway.lab]
+
+  tags = {
+    Name        = "elad-lab-nat"
+    Environment = var.environment
+    ManagedBy   = "Terraform"
+  }
+}
+
+resource "aws_route_table" "private" {
+  vpc_id = aws_vpc.lab.id
+
+  route {
+    cidr_block     = "0.0.0.0/0"
+    nat_gateway_id = aws_nat_gateway.this.id
+  }
+
+  tags = {
+    Name        = "elad-lab-private"
+    Environment = var.environment
+    ManagedBy   = "Terraform"
+  }
+}
+
+resource "aws_route_table_association" "private" {
+  subnet_id      = aws_subnet.private.id
+  route_table_id = aws_route_table.private.id
+}
+
+resource "aws_route_table_association" "private_b" {
+  subnet_id      = aws_subnet.private_b.id
+  route_table_id = aws_route_table.private.id
 }
