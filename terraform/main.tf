@@ -94,6 +94,31 @@ resource "aws_iam_role_policy_attachment" "task_ssm" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
 }
 
+# Execution role lets the ECS agent pull the image and ship container logs to
+# CloudWatch via the awslogs driver.
+resource "aws_iam_role" "execution" {
+  name = "hello-execution"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Action    = "sts:AssumeRole"
+      Principal = { Service = "ecs-tasks.amazonaws.com" }
+    }]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "execution" {
+  role       = aws_iam_role.execution.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+}
+
+resource "aws_cloudwatch_log_group" "hello" {
+  name              = "/ecs/hello"
+  retention_in_days = 14
+}
+
 resource "aws_ecs_task_definition" "this" {
   family                   = "hello"
   requires_compatibilities = ["FARGATE"]
@@ -101,6 +126,7 @@ resource "aws_ecs_task_definition" "this" {
   cpu                      = 256
   memory                   = 512
   task_role_arn            = aws_iam_role.task.arn
+  execution_role_arn       = aws_iam_role.execution.arn
 
   container_definitions = jsonencode([
     {
@@ -110,6 +136,14 @@ resource "aws_ecs_task_definition" "this" {
       portMappings = [
         { containerPort = 80 }
       ]
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          "awslogs-group"         = aws_cloudwatch_log_group.hello.name
+          "awslogs-region"        = "us-east-1"
+          "awslogs-stream-prefix" = "hello"
+        }
+      }
     }
   ])
 }
