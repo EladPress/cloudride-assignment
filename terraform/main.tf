@@ -163,9 +163,10 @@ resource "aws_ecs_service" "this" {
 
   depends_on = [aws_lb_listener.http]
 
-  # Auto scaling owns the task count after the initial deploy, so ignore drift.
+  # desired_count is owned by auto scaling and task_definition by the CI/CD
+  # pipeline; ignore both so Terraform doesn't revert them.
   lifecycle {
-    ignore_changes = [desired_count]
+    ignore_changes = [desired_count, task_definition]
   }
 }
 

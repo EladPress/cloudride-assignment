@@ -1,4 +1,4 @@
-name: CI - Build and Push
+name: CI/CD - Build, Push, Deploy
 
 on:
   push:
@@ -7,22 +7,29 @@ on:
 
 env:
   IMAGE_NAME: cloudride-assignment
+  AWS_REGION: us-east-1
+  ECS_CLUSTER: hello-cluster
+  ECS_SERVICE: hello-service
+  ECS_TASK_FAMILY: hello
+  CONTAINER_NAME: hello
 
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
+    outputs:
+      image: ${{ steps.tag.outputs.image }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
       # Sanitize the branch name (e.g. "feature/foo" -> "feature-foo") so it is
       # a valid Docker tag, then combine with the build number: BRANCH-BUILD
-      - name: Compute image tag
+      - name: Compute image reference
         id: tag
         run: |
           BRANCH_NAME="${GITHUB_REF_NAME//\//-}"
-          BUILD_NUMBER="${GITHUB_RUN_NUMBER}"
-          echo "image_tag=${BRANCH_NAME}-${BUILD_NUMBER}" >> "$GITHUB_OUTPUT"
+          IMAGE="${{ secrets.DOCKERHUB_USERNAME }}/${IMAGE_NAME}:${BRANCH_NAME}-${GITHUB_RUN_NUMBER}"
+          echo "image=${IMAGE}" >> "$GITHUB_OUTPUT"
 
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
@@ -38,4 +45,41 @@ jobs:
         with:
           context: ./app
           push: true
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:${{ steps.tag.outputs.image_tag }}
+          tags: ${{ steps.tag.outputs.image }}
+
+  deploy:
+    needs: build-and-push
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      # Terraform owns the task definition, so pull the live one and strip the
+      # read-only fields that register-task-definition rejects.
+      - name: Fetch current task definition
+        run: |
+          aws ecs describe-task-definition --task-definition "${ECS_TASK_FAMILY}" \
+            --query 'taskDefinition' --output json \
+            | jq 'del(.taskDefinitionArn,.revision,.status,.requiresAttributes,.compatibilities,.registeredAt,.registeredBy)' \
+            > task-definition.json
+
+      - name: Render new image into task definition
+        id: render
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: task-definition.json
+          container-name: ${{ env.CONTAINER_NAME }}
+          image: ${{ needs.build-and-push.outputs.image }}
+
+      - name: Deploy to ECS (rolling, zero-downtime)
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          task-definition: ${{ steps.render.outputs.task-definition }}
+          service: ${{ env.ECS_SERVICE }}
+          cluster: ${{ env.ECS_CLUSTER }}
+          wait-for-service-stability: true
