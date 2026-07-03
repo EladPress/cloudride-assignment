@@ -55,6 +55,10 @@ the floor of 2.
 
 ## Running it
 
+For the CI to run, it needs the following variables:
+DOCKERHUB_USERNAME and DOCKERHUB_TOKEN for pushing and pulling the Docker image, and:
+AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY for accessing AWS.
+
 Needs Terraform and AWS credentials for `us-east-1`. All variables have defaults,
 so:
 
