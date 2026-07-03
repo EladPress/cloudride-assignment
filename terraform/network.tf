@@ -1,20 +1,20 @@
-resource "aws_vpc" "lab" {
+resource "aws_vpc" "this" {
   cidr_block           = var.vpc_cidr
   enable_dns_support   = true
   enable_dns_hostnames = true
 
   tags = {
-    Name        = "elad-lab-vpc"
+    Name        = "cloudride-vpc"
     Environment = var.environment
     ManagedBy   = "Terraform"
   }
 }
 
-resource "aws_internet_gateway" "lab" {
-  vpc_id = aws_vpc.lab.id
+resource "aws_internet_gateway" "this" {
+  vpc_id = aws_vpc.this.id
 
   tags = {
-    Name        = "elad-lab-igw"
+    Name        = "cloudride-igw"
     Environment = var.environment
     ManagedBy   = "Terraform"
   }
@@ -25,41 +25,41 @@ data "aws_availability_zones" "available" {
 }
 
 resource "aws_subnet" "public_a" {
-  vpc_id                  = aws_vpc.lab.id
+  vpc_id                  = aws_vpc.this.id
   cidr_block              = var.public_subnet_cidr
   availability_zone       = data.aws_availability_zones.available.names[0]
   map_public_ip_on_launch = true
 
   tags = {
-    Name        = "elad-lab-public-a"
+    Name        = "cloudride-public-a"
     Environment = var.environment
     ManagedBy   = "Terraform"
   }
 }
 
 resource "aws_subnet" "public_b" {
-  vpc_id                  = aws_vpc.lab.id
+  vpc_id                  = aws_vpc.this.id
   cidr_block              = "10.0.2.0/24"
   availability_zone       = data.aws_availability_zones.available.names[1]
   map_public_ip_on_launch = true
 
   tags = {
-    Name        = "elad-lab-public-b"
+    Name        = "cloudride-public-b"
     Environment = var.environment
     ManagedBy   = "Terraform"
   }
 }
 
 resource "aws_route_table" "public" {
-  vpc_id = aws_vpc.lab.id
+  vpc_id = aws_vpc.this.id
 
   route {
     cidr_block = "0.0.0.0/0"
-    gateway_id = aws_internet_gateway.lab.id
+    gateway_id = aws_internet_gateway.this.id
   }
 
   tags = {
-    Name        = "elad-lab-public"
+    Name        = "cloudride-public"
     Environment = var.environment
     ManagedBy   = "Terraform"
   }
@@ -76,24 +76,24 @@ resource "aws_route_table_association" "public_b" {
 }
 
 resource "aws_subnet" "private_a" {
-  vpc_id            = aws_vpc.lab.id
+  vpc_id            = aws_vpc.this.id
   cidr_block        = "10.0.3.0/24"
   availability_zone = data.aws_availability_zones.available.names[0]
 
   tags = {
-    Name        = "elad-lab-private-a"
+    Name        = "cloudride-private-a"
     Environment = var.environment
     ManagedBy   = "Terraform"
   }
 }
 
 resource "aws_subnet" "private_b" {
-  vpc_id            = aws_vpc.lab.id
+  vpc_id            = aws_vpc.this.id
   cidr_block        = "10.0.4.0/24"
   availability_zone = data.aws_availability_zones.available.names[1]
 
   tags = {
-    Name        = "elad-lab-private-b"
+    Name        = "cloudride-private-b"
     Environment = var.environment
     ManagedBy   = "Terraform"
   }
@@ -105,7 +105,7 @@ resource "aws_eip" "nat" {
   domain = "vpc"
 
   tags = {
-    Name        = "elad-lab-nat"
+    Name        = "cloudride-nat"
     Environment = var.environment
     ManagedBy   = "Terraform"
   }
@@ -114,17 +114,17 @@ resource "aws_eip" "nat" {
 resource "aws_nat_gateway" "this" {
   allocation_id = aws_eip.nat.id
   subnet_id     = aws_subnet.public_a.id
-  depends_on    = [aws_internet_gateway.lab]
+  depends_on    = [aws_internet_gateway.this]
 
   tags = {
-    Name        = "elad-lab-nat"
+    Name        = "cloudride-nat"
     Environment = var.environment
     ManagedBy   = "Terraform"
   }
 }
 
 resource "aws_route_table" "private" {
-  vpc_id = aws_vpc.lab.id
+  vpc_id = aws_vpc.this.id
 
   route {
     cidr_block     = "0.0.0.0/0"
@@ -132,7 +132,7 @@ resource "aws_route_table" "private" {
   }
 
   tags = {
-    Name        = "elad-lab-private"
+    Name        = "cloudride-private"
     Environment = var.environment
     ManagedBy   = "Terraform"
   }

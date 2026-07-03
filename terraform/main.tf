@@ -1,6 +1,6 @@
 resource "aws_security_group" "alb" {
   name   = "cloudride-alb"
-  vpc_id = aws_vpc.lab.id
+  vpc_id = aws_vpc.this.id
 
   ingress {
     from_port   = 80
@@ -18,7 +18,7 @@ resource "aws_security_group" "alb" {
 
 resource "aws_security_group" "service" {
   name   = "cloudride-service"
-  vpc_id = aws_vpc.lab.id
+  vpc_id = aws_vpc.this.id
 
   ingress {
     from_port       = 80
@@ -45,7 +45,7 @@ resource "aws_lb_target_group" "this" {
   name        = "cloudride-tg"
   port        = 80
   protocol    = "HTTP"
-  vpc_id      = aws_vpc.lab.id
+  vpc_id      = aws_vpc.this.id
   target_type = "ip" # required for Fargate
 
   health_check {
