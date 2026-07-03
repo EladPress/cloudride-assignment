@@ -8,10 +8,10 @@ on:
 env:
   IMAGE_NAME: cloudride-assignment
   AWS_REGION: us-east-1
-  ECS_CLUSTER: hello-cluster
-  ECS_SERVICE: hello-service
-  ECS_TASK_FAMILY: hello
-  CONTAINER_NAME: hello
+  ECS_CLUSTER: cloudride-cluster
+  ECS_SERVICE: cloudride-service
+  ECS_TASK_FAMILY: cloudride
+  CONTAINER_NAME: cloudride
 
 jobs:
   build-and-push:

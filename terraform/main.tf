@@ -1,5 +1,5 @@
 resource "aws_security_group" "alb" {
-  name   = "hello-alb"
+  name   = "cloudride-alb"
   vpc_id = aws_vpc.lab.id
 
   ingress {
@@ -17,7 +17,7 @@ resource "aws_security_group" "alb" {
 }
 
 resource "aws_security_group" "service" {
-  name   = "hello-service"
+  name   = "cloudride-service"
   vpc_id = aws_vpc.lab.id
 
   ingress {
@@ -38,14 +38,14 @@ resource "aws_security_group" "service" {
 # --- Load balancer ---
 
 resource "aws_lb" "this" {
-  name               = "hello-alb"
+  name               = "cloudride-alb"
   load_balancer_type = "application"
   security_groups    = [aws_security_group.alb.id]
-  subnets            = [aws_subnet.public.id, aws_subnet.public_b.id]
+  subnets            = [aws_subnet.public_a.id, aws_subnet.public_b.id]
 }
 
 resource "aws_lb_target_group" "this" {
-  name        = "hello-tg"
+  name        = "cloudride-tg"
   port        = 80
   protocol    = "HTTP"
   vpc_id      = aws_vpc.lab.id
@@ -71,12 +71,12 @@ resource "aws_lb_listener" "http" {
 # --- ECS ---
 
 resource "aws_ecs_cluster" "this" {
-  name = "hello-cluster"
+  name = "cloudride-cluster"
 }
 
 # Task role required for ECS Exec to open SSM channels into the task
 resource "aws_iam_role" "task" {
-  name = "hello-task"
+  name = "cloudride-task"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -95,7 +95,7 @@ resource "aws_iam_role_policy_attachment" "task_ssm" {
 }
 
 resource "aws_iam_role" "execution" {
-  name = "hello-execution"
+  name = "cloudride-execution"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -113,7 +113,7 @@ resource "aws_iam_role_policy_attachment" "execution" {
 }
 
 resource "aws_ecs_task_definition" "this" {
-  family                   = "hello"
+  family                   = "cloudride"
   requires_compatibilities = ["FARGATE"]
   network_mode             = "awsvpc"
   cpu                      = 256
@@ -123,7 +123,7 @@ resource "aws_ecs_task_definition" "this" {
 
   container_definitions = jsonencode([
     {
-      name      = "hello"
+      name      = "cloudride"
       image     = var.container_image
       essential = true
       portMappings = [
@@ -132,9 +132,9 @@ resource "aws_ecs_task_definition" "this" {
       logConfiguration = {
         logDriver = "awslogs"
         options = {
-          "awslogs-group"         = aws_cloudwatch_log_group.hello.name
+          "awslogs-group"         = aws_cloudwatch_log_group.this.name
           "awslogs-region"        = "us-east-1"
-          "awslogs-stream-prefix" = "hello"
+          "awslogs-stream-prefix" = "cloudride"
         }
       }
     }
@@ -142,7 +142,7 @@ resource "aws_ecs_task_definition" "this" {
 }
 
 resource "aws_ecs_service" "this" {
-  name                   = "hello-service"
+  name                   = "cloudride-service"
   cluster                = aws_ecs_cluster.this.id
   task_definition        = aws_ecs_task_definition.this.arn
   desired_count          = 2
@@ -150,14 +150,14 @@ resource "aws_ecs_service" "this" {
   enable_execute_command = true
 
   network_configuration {
-    subnets          = [aws_subnet.private.id, aws_subnet.private_b.id]
+    subnets          = [aws_subnet.private_a.id, aws_subnet.private_b.id]
     security_groups  = [aws_security_group.service.id]
     assign_public_ip = false
   }
 
   load_balancer {
     target_group_arn = aws_lb_target_group.this.arn
-    container_name   = "hello"
+    container_name   = "cloudride"
     container_port   = 80
   }
 
@@ -181,7 +181,7 @@ resource "aws_appautoscaling_target" "this" {
 }
 
 resource "aws_appautoscaling_policy" "cpu" {
-  name               = "hello-cpu"
+  name               = "cloudride-cpu"
   policy_type        = "TargetTrackingScaling"
   service_namespace  = aws_appautoscaling_target.this.service_namespace
   resource_id        = aws_appautoscaling_target.this.resource_id

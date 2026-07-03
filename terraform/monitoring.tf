@@ -1,10 +1,10 @@
-resource "aws_cloudwatch_log_group" "hello" {
-  name              = "/ecs/hello"
+resource "aws_cloudwatch_log_group" "this" {
+  name              = "/ecs/cloudride"
   retention_in_days = 14
 }
 
 resource "aws_sns_topic" "alerts" {
-  name = "hello-alerts"
+  name = "cloudride-alerts"
 }
 
 resource "aws_sns_topic_subscription" "alerts_email" {
@@ -15,7 +15,7 @@ resource "aws_sns_topic_subscription" "alerts_email" {
 }
 
 resource "aws_cloudwatch_metric_alarm" "unhealthy_hosts" {
-  alarm_name          = "hello-unhealthy-hosts"
+  alarm_name          = "cloudride-unhealthy-hosts"
   namespace           = "AWS/ApplicationELB"
   metric_name         = "HealthyHostCount"
   statistic           = "Average"
@@ -35,7 +35,7 @@ resource "aws_cloudwatch_metric_alarm" "unhealthy_hosts" {
 }
 
 resource "aws_cloudwatch_metric_alarm" "target_5xx" {
-  alarm_name          = "hello-target-5xx"
+  alarm_name          = "cloudride-target-5xx"
   namespace           = "AWS/ApplicationELB"
   metric_name         = "HTTPCode_Target_5XX_Count"
   statistic           = "Sum"
@@ -55,7 +55,7 @@ resource "aws_cloudwatch_metric_alarm" "target_5xx" {
 }
 
 resource "aws_cloudwatch_metric_alarm" "cpu_high" {
-  alarm_name          = "hello-cpu-high"
+  alarm_name          = "cloudride-cpu-high"
   namespace           = "AWS/ECS"
   metric_name         = "CPUUtilization"
   statistic           = "Average"

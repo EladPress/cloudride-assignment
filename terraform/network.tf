@@ -26,14 +26,14 @@ data "aws_availability_zones" "available" {
 
 # --- Public subnets ---
 
-resource "aws_subnet" "public" {
+resource "aws_subnet" "public_a" {
   vpc_id                  = aws_vpc.lab.id
   cidr_block              = var.public_subnet_cidr
   availability_zone       = data.aws_availability_zones.available.names[0]
   map_public_ip_on_launch = true
 
   tags = {
-    Name        = "elad-lab-public"
+    Name        = "elad-lab-public-a"
     Environment = var.environment
     ManagedBy   = "Terraform"
   }
@@ -67,8 +67,8 @@ resource "aws_route_table" "public" {
   }
 }
 
-resource "aws_route_table_association" "public" {
-  subnet_id      = aws_subnet.public.id
+resource "aws_route_table_association" "public_a" {
+  subnet_id      = aws_subnet.public_a.id
   route_table_id = aws_route_table.public.id
 }
 
@@ -79,13 +79,13 @@ resource "aws_route_table_association" "public_b" {
 
 # --- Private subnets ---
 
-resource "aws_subnet" "private" {
+resource "aws_subnet" "private_a" {
   vpc_id            = aws_vpc.lab.id
   cidr_block        = "10.0.3.0/24"
   availability_zone = data.aws_availability_zones.available.names[0]
 
   tags = {
-    Name        = "elad-lab-private"
+    Name        = "elad-lab-private-a"
     Environment = var.environment
     ManagedBy   = "Terraform"
   }
@@ -117,7 +117,7 @@ resource "aws_eip" "nat" {
 
 resource "aws_nat_gateway" "this" {
   allocation_id = aws_eip.nat.id
-  subnet_id     = aws_subnet.public.id
+  subnet_id     = aws_subnet.public_a.id
   depends_on    = [aws_internet_gateway.lab]
 
   tags = {
@@ -142,8 +142,8 @@ resource "aws_route_table" "private" {
   }
 }
 
-resource "aws_route_table_association" "private" {
-  subnet_id      = aws_subnet.private.id
+resource "aws_route_table_association" "private_a" {
+  subnet_id      = aws_subnet.private_a.id
   route_table_id = aws_route_table.private.id
 }
 

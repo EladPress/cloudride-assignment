@@ -7,7 +7,7 @@ output "connect_command" {
   value = join(" ", [
     "aws ecs execute-command --region us-east-1",
     "--cluster ${aws_ecs_cluster.this.name}",
-    "--container hello --interactive --command /bin/sh",
+    "--container cloudride --interactive --command /bin/sh",
     "--task {TASK_ID}",
   ])
 }
