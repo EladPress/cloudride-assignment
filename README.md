@@ -8,7 +8,7 @@ Balancer, defined as Terraform and shipped through GitHub Actions. Region:
 
 This project deploys an ECS service that deploys a minimum of 2 tasks and a maximum of 4 (depends on average CPU usage), spread across 2 AZs in the us-east-1 region.
 
-For every AZ exists a public and a private subnet. The ecs service itself exists in the private subnet with a security group that limits inbound requests to port 80 only. The private subnets' route table routes all requests destined outside of the VPC to the VPC's NAT Gateway which then routes the requests into the VPC's Internet Gateway
+For every AZ exists a public and a private subnet. The ECS service itself exists in the private subnet with a security group that limits inbound requests to port 80 only. The private subnets' route table routes all requests destined outside of the VPC to the VPC's NAT Gateway which then routes the requests into the VPC's Internet Gateway
 
 The Application Load Balancer sits in the public subnets and is the only entry point from the internet. It listens on port 80 and forwards to a target group of the running tasks.
 
@@ -55,7 +55,7 @@ the floor of 2.
 
 ## Running it
 
-For the CI to run, it needs the following variables:
+For the CI to run, it needs the following GitHub Secrets:
 DOCKERHUB_USERNAME and DOCKERHUB_TOKEN for pushing and pulling the Docker image, and:
 AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY for accessing AWS.
 
