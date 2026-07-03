@@ -34,9 +34,6 @@ resource "aws_security_group" "service" {
   }
 }
 
-
-# --- Load balancer ---
-
 resource "aws_lb" "this" {
   name               = "cloudride-alb"
   load_balancer_type = "application"
@@ -67,8 +64,6 @@ resource "aws_lb_listener" "http" {
     target_group_arn = aws_lb_target_group.this.arn
   }
 }
-
-# --- ECS ---
 
 resource "aws_ecs_cluster" "this" {
   name = "cloudride-cluster"
@@ -169,8 +164,6 @@ resource "aws_ecs_service" "this" {
     ignore_changes = [desired_count, task_definition]
   }
 }
-
-# --- Auto scaling ---
 
 resource "aws_appautoscaling_target" "this" {
   service_namespace  = "ecs"

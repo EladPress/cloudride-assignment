@@ -24,8 +24,6 @@ data "aws_availability_zones" "available" {
   state = "available"
 }
 
-# --- Public subnets ---
-
 resource "aws_subnet" "public_a" {
   vpc_id                  = aws_vpc.lab.id
   cidr_block              = var.public_subnet_cidr
@@ -76,8 +74,6 @@ resource "aws_route_table_association" "public_b" {
   subnet_id      = aws_subnet.public_b.id
   route_table_id = aws_route_table.public.id
 }
-
-# --- Private subnets ---
 
 resource "aws_subnet" "private_a" {
   vpc_id            = aws_vpc.lab.id
